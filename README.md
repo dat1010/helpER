@@ -44,7 +44,7 @@ Local automation stack for project workflows:
 ```
 
 2. Edit `.env` with your Plane/GitHub values:
-- `PLANE_BASE_URL`
+- `PLANE_BASE_URL` (`http://host.docker.internal` when OpenClaw runs in Docker)
 - `PLANE_API_TOKEN`
 - `PLANE_WORKSPACE_SLUG`
 - `PLANE_PROJECT_IDS`
@@ -59,7 +59,7 @@ Local automation stack for project workflows:
 4. Open services:
 - Homepage: `http://localhost:3000`
 - OpenClaw dashboard: `http://localhost:8081`
-- Plane: default expected at `http://localhost:8085`
+- Plane: default expected at `http://localhost`
 
 ## Plane Setup
 
@@ -126,3 +126,76 @@ Repo mapping:
 - Planning output is template-based (not LLM-generated yet).
 - Implementation creates a scaffold artifact commit in the target repo to ensure PR creation; it does not yet apply project-specific code changes.
 - Idempotency markers are in-memory only (reset on service restart).
+
+## Troubleshooting
+
+- `no such service: helper-homepage` when using compose:
+  - Use compose service names, not container names.
+  - Correct: `docker compose restart homepage openclaw`
+  - Container-name alternative: `docker restart helper-homepage helper-openclaw`
+
+- Plane link in Homepage not reachable:
+  - Plane proxy is exposed on port `80` in this setup.
+  - Use `HOMEPAGE_PLANE_URL=http://localhost` in `.env`, then rerender config:
+    - `./scripts/render-homepage-config.sh`
+
+- OpenClaw errors connecting to Plane (`localhost:8085` from container):
+  - Inside Docker, `localhost` points to the OpenClaw container itself.
+  - Use `PLANE_BASE_URL=http://host.docker.internal` for OpenClaw.
+  - Rebuild/restart OpenClaw:
+    - `docker compose up -d --build openclaw`
+
+- Plane installer failed during local image build (`/home/.../apps/api not found`):
+  - This can happen if installer falls back to local build path.
+  - Preferred path is using installed Plane compose directly:
+    - `./scripts/bootstrap.sh plane-start`
+  - Script now detects `.plane-selfhost/plane-app/docker-compose.yaml` automatically.
+
+- No planning comment appears:
+  - Ticket must match both trigger conditions:
+    - State exactly `Planning`
+    - Label exactly `needs-plan`
+  - Check OpenClaw logs for scan summaries:
+    - `docker compose logs -f openclaw`
+
+- No implementation PR appears:
+  - Ticket must match:
+    - State exactly `Implement`
+    - Label exactly `ready-for-openclaw`
+  - `GITHUB_TOKEN` must be valid and repo-scoped correctly.
+
+- Metrics show errors increasing:
+  - Review logs:
+    - `docker compose logs --tail=250 openclaw`
+  - Verify `.env` values for Plane base URL, workspace slug, project IDs, and tokens.
+
+## Session Checkpoint (Today)
+
+- Local stack is running with:
+  - Homepage (`http://localhost:3000`)
+  - Plane (self-hosted)
+  - OpenClaw (`http://localhost:8081`)
+- Planning flow validated end-to-end:
+  - `Planning + needs-plan` -> plan comment posted -> moved to `Planned`
+- Implementation flow validated end-to-end:
+  - `Implement + ready-for-openclaw` -> branch/PR created -> PR link posted -> moved to `Review`
+- Added scan summary logging in OpenClaw for faster debugging:
+  - planning: scanned/matched/posted
+  - implementation: scanned/candidates
+
+## Next Phase (LLM Worker)
+
+Current OpenClaw logic is orchestration-first and template-driven.  
+Future phase is adding an LLM execution worker so the agent can perform real planning and coding work.
+
+Planned additions:
+- LLM planner:
+  - Build plan from ticket + repo context instead of static template
+- LLM implementer:
+  - Clone/mount repo, edit code, run tests, generate commit(s), open PR with real code changes
+- Safety and control:
+  - Approval gates before write operations
+  - Budget/token controls
+  - Retry and rollback behavior
+- Persistence:
+  - Durable ticket processing state (not in-memory only)

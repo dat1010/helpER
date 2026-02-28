@@ -76,8 +76,12 @@ class Engine:
         state_ids = self._load_state_ids(project_id)
         planning_name = self.cfg.plane_state_planning
         required_label = self.cfg.plane_label_needs_plan.lower()
+        scanned = 0
+        matched = 0
+        posted = 0
 
         for item in self.plane.list_work_items(project_id):
+            scanned += 1
             work_item_id = str(item.get("id", ""))
             if not work_item_id:
                 continue
@@ -89,6 +93,7 @@ class Engine:
             labels = {name.lower() for name in self.plane.item_label_names(item)}
             if state_name != planning_name.lower() or required_label not in labels:
                 continue
+            matched += 1
 
             plan_text = self._build_plan_text(item)
             comment = self._html_from_markdown(plan_text)
@@ -98,7 +103,15 @@ class Engine:
                 self.plane.update_work_item_state(project_id, work_item_id, planned_state)
             self.planned_tickets.add(key)
             self.metrics.inc("planning_plans_posted")
+            posted += 1
             self.log.info("Posted plan for %s/%s", project_id, work_item_id)
+        self.log.info(
+            "Planning scan project=%s scanned=%d matched=%d posted=%d",
+            project_id,
+            scanned,
+            matched,
+            posted,
+        )
 
     def _process_implementation_once(self) -> None:
         with self.impl_lock:
@@ -109,9 +122,11 @@ class Engine:
         candidates: List[Tuple[str, Dict]] = []
         required_state = self.cfg.plane_state_implement.lower()
         required_label = self.cfg.plane_label_ready_for_impl.lower()
+        scanned = 0
 
         for project_id in self.cfg.plane_project_ids:
             for item in self.plane.list_work_items(project_id):
+                scanned += 1
                 work_item_id = str(item.get("id", ""))
                 if not work_item_id:
                     continue
@@ -121,6 +136,11 @@ class Engine:
                 if state_name == required_state and required_label in labels:
                     candidates.append((project_id, item))
 
+        self.log.info(
+            "Implementation scan scanned=%d candidates=%d",
+            scanned,
+            len(candidates),
+        )
         if not candidates:
             return
 
