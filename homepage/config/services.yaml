@@ -1,0 +1,10 @@
+- Infrastructure:
+    - Plane:
+        href: http://localhost
+        description: Project management API source
+    - GitHub:
+        href: https://github.com
+        description: Code and pull requests
+    - OpenClaw:
+        href: http://localhost:8081
+        description: Automation engine dashboard

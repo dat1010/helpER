@@ -1,0 +1,5 @@
+[2026-02-28T21:15:01.786Z] info: kubernetes.yaml was copied to the config folder
+[2026-02-28T21:15:06.164Z] info: docker.yaml was copied to the config folder
+[2026-02-28T21:15:06.166Z] info: proxmox.yaml was copied to the config folder
+[2026-02-28T21:15:06.181Z] info: custom.css was copied to the config folder
+[2026-02-28T21:15:06.182Z] info: custom.js was copied to the config folder

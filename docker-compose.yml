@@ -1,0 +1,22 @@
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: helper-homepage
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./homepage/config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  openclaw:
+    build:
+      context: ./openclaw
+    container_name: helper-openclaw
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./openclaw/state:/data
+    ports:
+      - "8081:8080"

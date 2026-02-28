@@ -1,0 +1,6 @@
+title: helpER Dashboard
+headerStyle: boxedWidgets
+layout:
+  Infrastructure:
+    style: row
+    columns: 3
